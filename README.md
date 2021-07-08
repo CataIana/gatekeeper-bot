@@ -4,3 +4,5 @@ Bot that grants people a role after they authorize with the bot via the website.
 Requires your own domain to run. Setup with an nginx reverse proxy
 
 Make sure to fill in exampleconfig.json and rename it in config.json, setup nginx and install the python dependencies
+
+Be sure to turn on member intents in the discord api page
