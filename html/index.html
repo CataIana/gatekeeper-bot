@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta content="" property="og:title">
+  <meta content="" property="og:description">
+  <meta content="" property="og:url">
+  <meta content="" property="og:image">
+  <meta content="#812BDC" data-react-helmet="true" name="theme-color">
+  <title>Gatekeeper</title>
+  <style>
+    @media screen and (min-width: 601px) {
+      div.example {
+        font-size: 80px;
+      }
+    }
+
+    body {
+      background-color: rgb(54, 57, 63);
+      font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
+      color: white;
+    }
+
+    h2 {
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+    }
+
+    p {
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+    }
+
+    .button {
+      background-color: rgb(47, 49, 54);
+      /* Join Server Button */
+      border: 2px solid rgb(255, 255, 255);
+      color: white;
+      padding: 17px 34px;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      font-size: 28px;
+      margin: 4px 2px;
+      cursor: pointer;
+    }
+
+    .center-div {
+      display: flex;
+      left: 50%;
+      font-size: 28px;
+      margin: 4px 2px;
+      cursor: pointer;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .server-icon {
+      border-radius: 50%;
+    }
+  </style>
+</head>
+
+
+<body class="vsc-initialized"><br>
+  <p style="text-align:center;">
+    <a href="./">
+      <img class="server-icon" src="./server_icon.png" alt="Server Icon" width="128" height="128">
+    </a>
+  </p>
+  <h2>Gatekeeper</h2>
+  <p>To gain full access to the server you must authenticate with your discord account.<br>If you are not in the server, you will be joined automatically and be given access to the server</p>
+  <br>
+
+  <div class="center-div">
+    <button onclick="window.location.href='./authorize?code-required=true';" class="button">Login</button>
+  </div>
+
+  <!-- UI by phoenpc -->
+  <!-- Gatekeeper Bot by Kara/Catalana -->
+</body>
+
+</html>
