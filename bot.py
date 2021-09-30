@@ -66,6 +66,7 @@ class GatekeeperBot(commands.Bot):
     async def log_authorization(self, member, role_added=False):
         embed = Embed(title="User Authorized", colour=self.colour, timestamp=datetime.utcnow())
         embed.add_field(name="User", value=f"{member.mention} ({member})")
+        embed.set_footer(text=member.id)
         if role_added:
             embed.add_field(name="Verified Role Added", value=role_added)
         elif member.pending:
