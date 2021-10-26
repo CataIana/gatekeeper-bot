@@ -1,10 +1,13 @@
 from aiohttp import web
 from asyncio import sleep
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from bot import GatekeeperBot
 
 
 class RecieverWebServer():
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: GatekeeperBot = bot
         self.port = 3824
         self.discord_url = "https://discord.com/api"
         self.web_server = web.Application()
@@ -55,6 +58,7 @@ class RecieverWebServer():
         if request.query.get("error", None) is not None:
             err_code = request.query.get("error", "")
             error_description = request.query.get("error_description", "")
+            self.bot.log.warning(f"Discord returned error {err_code}: {error_description}")
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/error?error={err_code}&error_description={error_description}")
 
         # Get oauth code
@@ -72,6 +76,7 @@ class RecieverWebServer():
             "code": oauth,
             "redirect_uri": f'{self.bot.config["server_url"]}/authorize'
         }
+
         r = await self.bot.aSession.post(f"{self.discord_url}/oauth2/token", headers={"Content-Type": "application/x-www-form-urlencoded"}, data=data)
         token = await r.json()
         if token.get("error", None) is not None:
@@ -88,7 +93,7 @@ class RecieverWebServer():
 
         g = self.bot.get_guild(int(self.bot.config["guild_id"]))
         if g is None:
-            self.log.error("Failed to get guild object")
+            self.bot.log.error("Failed to get guild object")
             err_code = ""
             error_description = "Unable to get guild"
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/error?error={err_code}&error_description={error_description}")
@@ -116,6 +121,6 @@ class RecieverWebServer():
             await self.bot.member_join(member)
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/done")
         else:
-            self.bot.log.debug(f"{user['username']} in guild already, assigning role")
+            self.bot.log.debug(f"{user['username']}{user['discriminator']} in guild already, assigning role")
             await self.bot.member_join(member)
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/done")

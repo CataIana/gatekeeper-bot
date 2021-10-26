@@ -1,4 +1,4 @@
-from discord import Intents, Colour, Activity, ActivityType, Embed, Forbidden
+from discord import Intents, Colour, Activity, ActivityType, Embed, Forbidden, Member
 from aiohttp import ClientSession
 from discord.ext import commands
 from aiohttp import ClientSession
@@ -18,12 +18,12 @@ class GatekeeperBot(commands.Bot):
 
         self.format = logging.Formatter(
             '%(asctime)s:%(levelname)s:%(name)s: %(message)s')
-        self.log_level = logging.INFO
+        self.log_level = logging.DEBUG
         self.log = logging.getLogger("Gatekeeper")
         self.log.setLevel(self.log_level)
 
         fhandler = logging.FileHandler(filename="gatekeeper.log", encoding="utf-8", mode="w+")
-        fhandler.setLevel(logging.WARNING)
+        fhandler.setLevel(logging.DEBUG)
         fhandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
         self.log.addHandler(fhandler)
 
@@ -54,7 +54,10 @@ class GatekeeperBot(commands.Bot):
             self.log.debug(f"{member} not pending on join, assigning role")
             role = member.guild.get_role(int(self.config["role_id"]))
             if role is not None and role not in member.roles:
-                await member.add_roles(role)
+                try:
+                    await member.add_roles(role)
+                except Forbidden:
+                    pass
                 await self.log_authorization(member, role_added=True)
             else:
                 await self.log_authorization(member)
@@ -63,16 +66,17 @@ class GatekeeperBot(commands.Bot):
                 self.pending_users.append(member.id)
             await self.log_authorization(member)
 
-    async def log_authorization(self, member, role_added=False):
-        embed = Embed(title="User Authorized", colour=self.colour, timestamp=datetime.utcnow())
+    async def log_authorization(self, member: Member, role_added=False):
+        embed = Embed(title="User Verified", colour=self.colour, timestamp=datetime.utcnow())
+        embed.set_author(name=member, icon_url=member.avatar)
         embed.add_field(name="User", value=f"{member.mention} ({member})")
-        embed.set_footer(text=member.id)
+        embed.set_footer(text=f"User ID: {member.id}")
         if role_added:
             embed.add_field(name="Verified Role Added", value=role_added)
         elif member.pending:
-            embed.add_field(name="Verified Role Added", value="False, user still pending")
+            embed.add_field(name="Verified Role Added", value="No, user still pending")
         else:
-            embed.add_field(name="Verified Role Added", value=role_added)
+            embed.add_field(name="Verified Role Added", value="Yes" if role_added else "No")
         channel = self.get_channel(self.config.get("log_channel", None))
         if channel is not None:
             try:
