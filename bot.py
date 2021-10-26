@@ -1,10 +1,10 @@
 from discord import Intents, Colour, Activity, ActivityType, Embed, Forbidden, Member
-from aiohttp import ClientSession
-from discord.ext import commands
+from discord.ext import commands, tasks
 from aiohttp import ClientSession
 import json
 import logging
 from datetime import datetime
+from time import time
 import sys
 from webserver import RecieverWebServer
 
@@ -47,7 +47,18 @@ class GatekeeperBot(commands.Bot):
         self.log.info("Shutting down...")
         await super().close()
 
-    async def member_join(self, member):
+    @tasks.loop(seconds=600)
+    async def cleanup_ids(self):
+        await self.wait_until_ready()
+        self.bot.log.debug("Cleaning up old state cookies")
+        deleted = 0
+        for state_value in self.web_server.states.keys():
+            if (time() - self.web_server.states[state_value]) > 600:
+                del self.web_server.states[state_value]
+                deleted += 1
+        self.bot.log.debug(f"Deleted {deleted} old state cookies")
+
+    async def member_join(self, member: Member):
         if member.guild.id != int(self.config["guild_id"]):
             return
         if not member.pending:

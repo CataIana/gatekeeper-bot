@@ -2,6 +2,7 @@ from aiohttp import web
 from asyncio import sleep
 from string import digits, ascii_letters
 from random import choice
+from time import time
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from bot import GatekeeperBot
@@ -18,7 +19,7 @@ class RecieverWebServer():
         #self.web_server.add_routes([web.route('*', '/done', self.success)])
         #self.web_server.add_routes([web.route('*', '/error', self.error)])
         #self.web_server.add_routes([web.static('/', "html")])
-        self.states = []
+        self.states = {}
 
     @staticmethod
     def index_factory(path, filename):
@@ -59,9 +60,9 @@ class RecieverWebServer():
             self.bot.log.debug(request)
             scopes = "identify guilds.join guilds"
             state_cookie = self.random_string_generator(21)
-            while state_cookie in self.states:
+            while state_cookie in self.states.keys():
                 state_cookie = self.random_string_generator(21)
-            self.states.append(state_cookie)
+            self.states[state_cookie] = time()
             url = f"https://discord.com/oauth2/authorize?client_id={self.bot.config['client_id']}&redirect_uri={self.bot.config['server_url']}/authorize&response_type=code&scope={scopes}&state={state_cookie}"
             redirect = web.HTTPSeeOther(url)
             redirect.set_cookie(name="state", value=state_cookie, expires=600)
@@ -69,14 +70,18 @@ class RecieverWebServer():
             return redirect
 
         state_cookie = request.cookies.get("state", None)
-        self.bot.log.debug(f"Recieved code with state value {state_cookie}")
-        if not state_cookie:
-            self.bot.log.debug("Got request with no cookie")
+        returned_state = request.query.get("state", None)
+        self.bot.log.debug(f"Recieved code with state query {returned_state}. Cookie returned is {state_cookie}")
+        if not state_cookie or not returned_state:
+            self.bot.log.debug("Got request with no cookie or return state")
             return web.HTTPSeeOther(self.bot.config['server_url'])
-        if state_cookie not in self.states:
+        if state_cookie != returned_state:
+            self.bot.log.debug("Got request with mismatching states")
+            return web.HTTPSeeOther(self.bot.config['server_url'])
+        if state_cookie not in self.states.keys():
             self.bot.log.debug("Got request with bad state")
             return web.HTTPSeeOther(self.bot.config['server_url'])
-        self.states.remove(state_cookie)
+        del self.states[state_cookie]
             
 
         #Discord errors return here, redirect to error page if this is the case
