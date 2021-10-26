@@ -86,7 +86,7 @@ class GatekeeperBot(commands.Bot):
         embed.add_field(name="User", value=f"{member.mention} ({member})")
         embed.set_footer(text=f"User ID: {member.id}")
         if role_added:
-            embed.add_field(name="Verified Role Added", value=role_added)
+            embed.add_field(name="Verified Role Added", value="Yes" if role_added else "No")
         elif member.pending:
             embed.add_field(name="Verified Role Added", value="No, user still pending")
         else:
