@@ -1,10 +1,5 @@
-import discord
-from discord.ext import commands, tasks
-try:
-    from discord.utils import utcnow
-except ImportError:
-    from datetime import datetime
-    utcnow = datetime.utcnow
+import disnake
+from disnake.ext import commands, tasks
 from aiohttp import ClientSession
 import json
 import logging
@@ -15,14 +10,14 @@ from webserver import RecieverWebServer
 
 class GatekeeperBot(commands.Bot):
     def __init__(self):
-        intents = discord.Intents.none()
+        intents = disnake.Intents.none()
         intents.guilds = True
         intents.members = True
 
         # Available status types - Playing/Listening to/Streaming
-        activity = discord.Activity(type=discord.ActivityType.playing, name="absolutely nothing")
-        #activity = discord.Activity(type=discord.ActivityType.listening, name="absolutely nothing")
-        #activity = discord.Activity(type=discord.ActivityType.streaming, name="absolutely nothing")
+        activity = disnake.Activity(type=disnake.ActivityType.playing, name="absolutely nothing")
+        #activity = disnake.Activity(type=disnake.ActivityType.listening, name="absolutely nothing")
+        #activity = disnake.Activity(type=disnake.ActivityType.streaming, name="absolutely nothing")
 
         super().__init__(command_prefix=commands.when_mentioned_or("!"),
                          case_insensitive=True, intents=intents, activity=activity)
@@ -50,8 +45,9 @@ class GatekeeperBot(commands.Bot):
 
         self.web_server = RecieverWebServer(self)
         self.loop.run_until_complete(self.web_server.start())
+        self.cleanup_ids.start()
 
-        self.colour = discord.Colour.from_rgb(128, 0, 128)
+        self.colour = disnake.Colour.from_rgb(128, 0, 128)
         self.bot_token = self.config["bot_token"]
         self.pending_users = []
 
@@ -63,15 +59,15 @@ class GatekeeperBot(commands.Bot):
     @tasks.loop(seconds=600)
     async def cleanup_ids(self):
         await self.wait_until_ready()
-        self.bot.log.debug("Cleaning up old state cookies")
+        self.log.debug("Cleaning up old state cookies")
         deleted = 0
         for state_value in self.web_server.states.keys():
             if (time() - self.web_server.states[state_value]) > 600:
                 del self.web_server.states[state_value]
                 deleted += 1
-        self.bot.log.debug(f"Deleted {deleted} old state cookies")
+        self.log.debug(f"Deleted {deleted} old state cookies")
 
-    async def member_join(self, member: discord.Member):
+    async def member_join(self, member: disnake.Member):
         if member.guild.id != int(self.config["guild_id"]):
             return
         if not member.pending:
@@ -80,7 +76,7 @@ class GatekeeperBot(commands.Bot):
             if role is not None and role not in member.roles:
                 try:
                     await member.add_roles(role)
-                except discord.Forbidden:
+                except disnake.Forbidden:
                     pass
                 await self.log_authorization(member, role_added=True)
             else:
@@ -90,13 +86,10 @@ class GatekeeperBot(commands.Bot):
                 self.pending_users.append(member.id)
             await self.log_authorization(member)
 
-    async def log_authorization(self, member: discord.Member, role_added=False):
-        embed = discord.Embed(title="User Verified",
-                              colour=self.colour, timestamp=utcnow())
-        if discord.__version__ == "2.0.0a":
-            embed.set_author(name=member, icon_url=member.display_avatar)
-        else:
-            embed.set_author(name=member, icon_url=member.avatar_url)
+    async def log_authorization(self, member: disnake.Member, role_added=False):
+        embed = disnake.Embed(title="User Verified",
+                              colour=self.colour, timestamp=disnake.utils.utcnow())
+        embed.set_author(name=member, icon_url=member.display_avatar)
         embed.add_field(name="User", value=f"{member.mention}")
         embed.set_footer(text=f"User ID: {member.id}")
         if member.pending:
@@ -109,12 +102,12 @@ class GatekeeperBot(commands.Bot):
         if channel is not None:
             try:
                 await channel.send(embed=embed)
-            except discord.Forbidden:
+            except disnake.Forbidden:
                 self.log.error(
                     "No permissions to send messages in log channel!")
 
     @commands.Cog.listener()
-    async def on_member_update(self, before, after):
+    async def on_member_update(self, before: disnake.Member, after: disnake.Member):
         if before.guild.id != int(self.config["guild_id"]):
             return
         if before.id in self.pending_users:
