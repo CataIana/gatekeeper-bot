@@ -8,19 +8,19 @@ import sys
 from webserver import RecieverWebServer
 
 
-class GatekeeperBot(commands.Bot):
+class GatekeeperBot(commands.InteractionBot):
     def __init__(self):
         intents = disnake.Intents.none()
         intents.guilds = True
         intents.members = True
 
         # Available status types - Playing/Listening to/Streaming
-        activity = disnake.Activity(type=disnake.ActivityType.playing, name="absolutely nothing")
-        #activity = disnake.Activity(type=disnake.ActivityType.listening, name="absolutely nothing")
-        #activity = disnake.Activity(type=disnake.ActivityType.streaming, name="absolutely nothing")
+        activity = disnake.Activity(
+            type=disnake.ActivityType.playing, name="absolutely nothing")
+        # activity = disnake.Activity(type=disnake.ActivityType.listening, name="absolutely nothing")
+        # activity = disnake.Activity(type=disnake.ActivityType.streaming, name="absolutely nothing")
 
-        super().__init__(command_prefix=commands.when_mentioned_or("!"),
-                         case_insensitive=True, intents=intents, activity=activity)
+        super().__init__(intents=intents, activity=activity)
 
         self.format = logging.Formatter(
             '%(asctime)s:%(levelname)s:%(name)s: %(message)s')
