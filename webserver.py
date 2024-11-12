@@ -58,6 +58,7 @@ class RecieverWebServer():
         #Check if user needs to be redirected so a code can be aquired
         if request.query.get("code-required", "false") == "true":
             self.bot.log.debug(request)
+            # TODO: We can remove guilds scope as guilds.join response can be used to check whether user is in guild or not.
             scopes = "identify guilds.join guilds"
             state_cookie = self.random_string_generator(21)
             while state_cookie in self.states.keys():
