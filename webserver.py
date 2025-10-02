@@ -7,6 +7,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from bot import GatekeeperBot
 
+def print_user(user: dict):
+    if user.get('discriminator', 0) != "0":
+        return f"{user['username']}#{user['discriminator']}"
+    else:
+        return f"{user['username']}"
+
 
 class RecieverWebServer():
     def __init__(self, bot):
@@ -59,7 +65,7 @@ class RecieverWebServer():
         if request.query.get("code-required", "false") == "true":
             self.bot.log.debug(request)
             # TODO: We can remove guilds scope as guilds.join response can be used to check whether user is in guild or not.
-            scopes = "identify guilds.join guilds"
+            scopes = "identify guilds.join"
             state_cookie = self.random_string_generator(21)
             while state_cookie in self.states.keys():
                 state_cookie = self.random_string_generator(21)
@@ -132,11 +138,11 @@ class RecieverWebServer():
         member = g.get_member(int(user['id']))
         if member is None: #Assume user is not in guild if member object is None
             # #Join Guild
-            self.bot.log.debug(f"Member object returned none assuming user {user['username']}{user['discriminator']} not in guild, joining them")
+            self.bot.log.debug(f"Member object returned none assuming user {print_user(user)} not in guild, joining them")
             url = f"{self.discord_url}/v8/guilds/{self.bot.config['guild_id']}/members/{user['id']}"
             headers = {"Authorization": f"Bot {self.bot.config['bot_token']}"}
             self.bot.log.debug(
-                f"Joining user {user['username']}{user['discriminator']} ({user['id']})")
+                f"Joining user {print_user(user)} ({user['id']})")
             data = {"access_token": token["access_token"]}
             response = await self.bot.aSession.put(url, headers=headers, json=data)
             join_json = await response.json()
@@ -152,6 +158,6 @@ class RecieverWebServer():
             await self.bot.member_join(member)
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/done")
         else:
-            self.bot.log.debug(f"{user['username']}{user['discriminator']} in guild already, assigning role")
+            self.bot.log.debug(f"{print_user(user)} in guild already")
             await self.bot.member_join(member)
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/done")
