@@ -26,7 +26,7 @@ class GatekeeperBot(commands.InteractionBot):
         super().__init__(intents=intents, activity=activity)
 
         self.format = logging.Formatter(
-            '%(asctime)s:%(levelname)s:%(name)s: %(message)s')
+            '%(levelname)s:%(name)s: %(message)s')
         self.log_level = logging.DEBUG
         self.log = logging.getLogger("Gatekeeper")
         self.log.setLevel(self.log_level)
