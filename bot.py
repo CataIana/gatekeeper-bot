@@ -1,24 +1,27 @@
-import disnake
-from disnake.ext import commands, tasks
-from aiohttp import ClientSession
 import json
 import logging
-from time import time
 import sys
+from time import time
+from typing import Union
+
+import disnake
+from aiohttp import ClientSession
+from disnake.ext import commands, tasks
+
 from webserver import RecieverWebServer
 
 
 class GatekeeperBot(commands.InteractionBot):
     def __init__(self):
+        with open("config.json") as f:
+            self.config = json.load(f)
+
         intents = disnake.Intents.none()
         intents.guilds = True
-        intents.members = True
+        intents.members = self.config.get("use_member_intent", False) == True
 
-        # Available status types - Playing/Listening to/Streaming
         activity = disnake.Activity(
-            type=disnake.ActivityType.playing, name="absolutely nothing")
-        # activity = disnake.Activity(type=disnake.ActivityType.listening, name="absolutely nothing")
-        # activity = disnake.Activity(type=disnake.ActivityType.streaming, name="absolutely nothing")
+            type=disnake.ActivityType.custom, name="verifying members")
 
         super().__init__(intents=intents, activity=activity)
 
@@ -40,18 +43,16 @@ class GatekeeperBot(commands.InteractionBot):
         chandler.setFormatter(self.format)
         self.log.addHandler(chandler)
 
-        with open("config.json") as f:
-            self.config = json.load(f)
-
         self.web_server = RecieverWebServer(self)
         self.loop.run_until_complete(self.web_server.start())
         self.cleanup_ids.start()
 
         self.colour = disnake.Colour.from_rgb(128, 0, 128)
         self.bot_token = self.config["bot_token"]
-        self.pending_users = []
+        self.pending_users: dict[int, float] = {}
 
     async def close(self):
+        self.pending_user_check.cancel()
         await self.aSession.close()
         self.log.info("Shutting down...")
         await super().close()
@@ -82,8 +83,9 @@ class GatekeeperBot(commands.InteractionBot):
             else:
                 await self.log_authorization(member)
         else:
-            if member.id not in self.pending_users:
-                self.pending_users.append(member.id)
+            # if member.id not in self.pending_users.keys():
+            self.log.debug(f"{member} is pending, not assigning role")
+            self.pending_users[member.id] = time()
             await self.log_authorization(member)
 
     async def log_authorization(self, member: disnake.Member, role_added=False):
@@ -98,7 +100,8 @@ class GatekeeperBot(commands.InteractionBot):
         else:
             embed.add_field(name="Verified Role Added",
                             value="Yes" if role_added else "No")
-        channel = self.get_channel(self.config.get("log_channel", None))
+        channel = self.get_channel(self.config.get("log_channel", None)) # pyright: ignore[reportAssignmentType] # This will always be a text channel
+        channel: Union[disnake.TextChannel, None] # Assign correct type
         if channel is not None:
             try:
                 await channel.send(embed=embed)
@@ -106,11 +109,39 @@ class GatekeeperBot(commands.InteractionBot):
                 self.log.error(
                     "No permissions to send messages in log channel!")
 
+    @tasks.loop(seconds=120)
+    async def pending_user_check(self):
+        self.log.debug(f"Checking {len(self.pending_users.keys())} pending users")
+        guild = self.get_guild(int(self.config["guild_id"]))
+        if guild:
+            for member_id, member_pending_time in dict(self.pending_users).items():
+                if (time() - member_pending_time) > (1800 if self.intents.members else 600):
+                    self.log.debug(f"{member_id} check time expired, removing from pending users")
+                    del self.pending_users[member_id]
+                try:
+                    member = await guild.fetch_member(member_id)
+                except disnake.NotFound:
+                    self.log.debug(f"{member_id} left before verifying, removing from pending users")
+                    del self.pending_users[member_id]
+                else:
+                    role = guild.get_role(int(self.config["role_id"]))
+                    if role is not None and role in member.roles:
+                        self.log.debug(f"{member} already is verified, removing from pending users")
+
+                    if not member.pending:
+                        self.log.debug(
+                            f"{member} is no longer pending and is verified, assigning role")
+                        del self.pending_users[member_id]
+                        await self.member_join(member)
+        else:
+            self.log.warning("Unable to run pending user check, cannot get guild object!")
+
+    # This won't work if we have no members intent.
     @commands.Cog.listener()
     async def on_member_update(self, before: disnake.Member, after: disnake.Member):
         if before.guild.id != int(self.config["guild_id"]):
             return
-        if before.id in self.pending_users:
+        if before.id in self.pending_users.keys():
             if before.pending and not after.pending:
                 self.log.debug(
                     f"{before} is no longer pending and is verified, assigning role")
@@ -124,6 +155,9 @@ class GatekeeperBot(commands.InteractionBot):
         self.log.info(
             f"Invite URL: https://discord.com/oauth2/authorize?client_id={self.user.id}&scope=bot&permissions=268435457")
         self.log.info(f"Gatekeeper URL: {self.config['server_url']}")
+        if not self.intents.members:
+            self.log.info("Starting pending user check")
+            self.pending_user_check.start()
 
     async def on_message(self, message): return
 

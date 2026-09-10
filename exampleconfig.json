@@ -3,7 +3,8 @@
     "client_secret": "",
     "bot_token": "",
     "server_url": "",
-    "guild_id": ,
-    "role_id": ,
-    "log_channel": 
+    "guild_id": 123,
+    "role_id": 123,
+    "log_channel": 123,
+    "use_member_intents": true
 }

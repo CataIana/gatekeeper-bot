@@ -1,3 +1,4 @@
+from disnake import NotFound
 from aiohttp import web
 from asyncio import sleep
 from string import digits, ascii_letters
@@ -135,10 +136,10 @@ class RecieverWebServer():
             error_description = "Unable to get guild"
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/error?error={err_code}&error_description={error_description}")
         
-        member = g.get_member(int(user['id']))
-        if member is None: #Assume user is not in guild if member object is None
-            # #Join Guild
-            self.bot.log.debug(f"Member object returned none assuming user {print_user(user)} not in guild, joining them")
+        try:
+            member = await g.fetch_member(int(user['id']))
+        except NotFound: # User isn't in guild, join them
+            self.bot.log.debug(f"User {print_user(user)} not in guild, joining them")
             url = f"{self.discord_url}/v8/guilds/{self.bot.config['guild_id']}/members/{user['id']}"
             headers = {"Authorization": f"Bot {self.bot.config['bot_token']}"}
             self.bot.log.debug(
@@ -151,10 +152,22 @@ class RecieverWebServer():
                 err_code = join_json["code"]
                 error_description = join_json["message"]
                 return web.HTTPSeeOther(f"{self.bot.config['server_url']}/error?error={err_code}&error_description={error_description}")
+            
             await sleep(1)
-            member = g.get_member(int(user['id']))
-            if int(user["id"]) not in self.bot.pending_users and member.pending:
-                self.bot.pending_users.append(int(user["id"]))
+            retry_count = 0
+            member = None
+            while member is None:
+                try:
+                    member = await g.fetch_member(int(user['id']))
+                except NotFound:
+                    retry_count += 1
+                    if retry_count >= 5:
+                        self.bot.log.error("Failed to fetch member after joining them, cannot assign role!")
+                        err_code = ""
+                        error_description = "Bot failed to find you in the server. Please try again later."
+                        return web.HTTPSeeOther(f"{self.bot.config['server_url']}/error?error={err_code}&error_description={error_description}")
+                    await sleep(1)
+                    continue
             await self.bot.member_join(member)
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/done")
         else:
