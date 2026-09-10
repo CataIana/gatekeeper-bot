@@ -62,7 +62,7 @@ class GatekeeperBot(commands.InteractionBot):
         await self.wait_until_ready()
         self.log.debug("Cleaning up old state cookies")
         deleted = 0
-        for state_value in self.web_server.states.keys():
+        for state_value in list(self.web_server.states.keys()):
             if (time() - self.web_server.states[state_value]) > 600:
                 del self.web_server.states[state_value]
                 deleted += 1
