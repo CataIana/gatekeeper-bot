@@ -122,7 +122,12 @@ class RecieverWebServer():
             err_code = ""
             error_description = "Invalid authorization code"
             return web.HTTPSeeOther(f"{self.bot.config['server_url']}/error?error={err_code}&error_description={error_description}")
-        self.bot.log.debug(f"Token data: {token}")
+        masked_token_data = dict(token)
+        if 'access_token' in masked_token_data:
+            masked_token_data['access_token'] = '<access token>'
+        if 'refresh_token' in masked_token_data:
+            masked_token_data['refresh_token'] = '<refresh_token>'
+        self.bot.log.debug(f"Token data: {masked_token_data}")
 
         # #Get User Information, mainly ID
         r = await self.bot.aSession.get(f"{self.discord_url}/users/@me", headers={"Authorization": f"Bearer {token['access_token']}"})
