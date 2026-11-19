@@ -117,12 +117,18 @@ class GatekeeperBot(commands.InteractionBot):
             for member_id, member_pending_time in dict(self.pending_users).items():
                 if (time() - member_pending_time) > (1800 if self.intents.members else 600):
                     self.log.debug(f"{member_id} check time expired, removing from pending users")
-                    del self.pending_users[member_id]
+                    try:
+                        del self.pending_users[member_id]
+                    except KeyError:
+                        self.log.warning(f"{member_id} not present in pending users after check time expired. Ignoring")
                 try:
                     member = await guild.fetch_member(member_id)
                 except disnake.NotFound:
                     self.log.debug(f"{member_id} left before verifying, removing from pending users")
-                    del self.pending_users[member_id]
+                    try:
+                        del self.pending_users[member_id]
+                    except KeyError:
+                        self.log.warning(f"{member_id} not present in pending users after leaving. Ignoring")
                 else:
                     role = guild.get_role(int(self.config["role_id"]))
                     if role is not None and role in member.roles:
@@ -131,7 +137,10 @@ class GatekeeperBot(commands.InteractionBot):
                     if not member.pending:
                         self.log.debug(
                             f"{member} is no longer pending and is verified, assigning role")
-                        del self.pending_users[member_id]
+                        try:
+                            del self.pending_users[member_id]
+                        except KeyError:
+                            self.log.warning(f"{member_id} not present in pending users after being verified. Ignoring")
                         await self.member_join(member)
         else:
             self.log.warning("Unable to run pending user check, cannot get guild object!")
